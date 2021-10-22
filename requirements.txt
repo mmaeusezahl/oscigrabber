@@ -1,0 +1,7 @@
+PyQt6
+pyvisa
+pyvisa-py
+pyqtgraph
+pyusb
+numpy
+pandas
