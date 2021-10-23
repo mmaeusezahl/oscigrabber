@@ -1,4 +1,4 @@
-# osci-grabber - A simple GUI for oscilloscope data transfer
+# oscigrabber - A simple GUI for oscilloscope data transfer
 
 This is a simple, single Python file script that launches a GUI, which can
 transfer data from an oscilloscope to the PC and save it a CSV file adding an
