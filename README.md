@@ -1,10 +1,10 @@
-# oscigrabber - A simple GUI for oscilloscope data transfer
+# oscigrabber - a simple GUI for oscilloscope data transfer
 
 This is a simple, single Python file script that launches a GUI, which can
 transfer data from an oscilloscope to the PC and save it a CSV file adding an
 optional comment.
 
-It's current scope includes the usage in a physics labcourse.
+Its current scope includes the usage in a physics labcourse.
 
 ## Features
 
@@ -39,6 +39,15 @@ other Python 3 versions). Install it from this GIT repository using
 pip install git+https://github.com/mmaeusezahl/oscigrabber.git
 ```
 
+You additionally have to install a wokring VISA backend as explained in the 
+[pyvisa](https://github.com/pyvisa/pyvisa) documentation.
+
+## Running
+
+```
+python -m oscigrabber 
+```
+
 ## Feature Ideas and improvements
 
 * Add support for different type of VISA implementations
@@ -48,6 +57,7 @@ pip install git+https://github.com/mmaeusezahl/oscigrabber.git
 * Automatically detect the correct number of channels
 * Prevent the oscilloscope from crashing on slow acquisition by detecting it
 * Better error detection and handling
+* Add a flashy icon
 
 ## Background
 
