@@ -24,7 +24,7 @@
 #
 from setuptools import setup
 
-setup(name='Osci-Grabber',
+setup(name='osci-grabber',
       version = '0.1',
       description = 'Simple GUI to transfer data from an (Agilent / Keysight) oscilloscope and save it as CSV. ',
       author = 'Max Mäusezahl',
