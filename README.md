@@ -6,6 +6,8 @@ optional comment.
 
 Its current scope includes the usage in a physics labcourse.
 
+![Screenhot of the GUI](https://github.com/mmaeusezahl/oscigrabber/blob/master/screenshot/screenshot.png?raw=true)
+
 ## Features
 
 * Tested on:
