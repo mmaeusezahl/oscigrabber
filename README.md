@@ -36,7 +36,7 @@ This project was tested to be compatible with Python 3.8 (but should work on
 other Python 3 versions). Install it from this GIT repository using
 
 ```
-pip install git+https://github.com/mmaeusezahl/osci-grabber.git
+pip install git+https://github.com/mmaeusezahl/oscigrabber.git
 ```
 
 ## Feature Ideas and improvements
