@@ -72,6 +72,8 @@ As I could not find any ready solution I came up with this simple interface.
 
 ## Related projects
 
+* A tool to interact with Rigol oscilloscopes: [DSRemote](https://gitlab.com/Teuniz/DSRemote)
+
 ## Contributing
 
 Contributions of any kind are welcome, especially in the form of pull-requests.
