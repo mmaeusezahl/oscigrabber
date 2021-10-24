@@ -73,6 +73,10 @@ As I could not find any ready solution I came up with this simple interface.
 ## Related projects
 
 * A tool to interact with Rigol oscilloscopes: [DSRemote](https://gitlab.com/Teuniz/DSRemote)
+* A tool to interact with a Hantek USB oscilloscope: [OpenHantek](https://github.com/OpenHantek/openhantek)
+* A signal analysis software suite, which has Mixed-Signal-Oscilloscope support for a wide range of devices:
+  [sigrok](https://sigrok.org/wiki/Main_Page), in particular the
+  [SmuView](https://sigrok.org/wiki/SmuView)
 
 ## Contributing
 
