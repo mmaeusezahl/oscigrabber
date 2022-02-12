@@ -322,6 +322,8 @@ class OsciSnapshot(QMainWindow):
         self.acquisition_plot_layout = GraphicsLayout()                                                   
         self.acquisition_plot_view.setCentralItem(self.acquisition_plot_layout)
         self.acquisition_plot_widget = self.acquisition_plot_layout.addPlot(0,0)
+        self.acquisition_plot_widget.setDownsampling(1,True,'peak')
+        self.acquisition_plot_widget.setClipToView(True)
         self.acquisition_plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.acquisition_tab_layout.addWidget(self.acquisition_plot_view, stretch=1)
 
@@ -357,6 +359,8 @@ class OsciSnapshot(QMainWindow):
         self.review_plot_layout = GraphicsLayout()                                                   
         self.review_plot_view.setCentralItem(self.review_plot_layout)
         self.review_plot_widget = self.review_plot_layout.addPlot(0,0)
+        self.review_plot_widget.setDownsampling(1, True, 'peak')
+        self.review_plot_widget.setClipToView(True)
         self.review_plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
         self.review_tab_layout.addWidget(self.review_plot_view, stretch=1)
 
