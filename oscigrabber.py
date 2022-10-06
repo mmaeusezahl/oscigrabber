@@ -105,8 +105,9 @@ class Oscilloscope:
     def connect(self, resource_string):
         self.safe_close()
         self.instr = self.rm.open_resource(resource_string)
-        self.instr.timeout = 3000
+        self.instr.timeout = 1000
         self.instr.write("*CLS")
+        self.instr.write("*IDN?")
         self.read_num_channels()
 
     def get_identity(self):
@@ -232,7 +233,7 @@ class OsciPlotWidget(QWidget):
         
         top_layout = QHBoxLayout(top_box)
         
-        self.btn_reset = QPushButton("Reset View", self)
+        self.btn_reset = QPushButton("Reset Zoom", self)
         self.btn_reset.clicked.connect(self.reset_view)
         top_layout.addWidget(self.btn_reset)
         top_layout.addSpacing(10)
@@ -245,7 +246,7 @@ class OsciPlotWidget(QWidget):
         
         self.chb_ind_plots = QCheckBox("Individual Plots", self)
         self.chb_ind_plots.setChecked(False)
-        self.chb_ind_plots.stateChanged.connect(self.reload_data)
+        self.chb_ind_plots.stateChanged.connect(self.reset_data)
         top_layout.addWidget(self.chb_ind_plots)
 
         top_layout.addStretch()
@@ -253,9 +254,10 @@ class OsciPlotWidget(QWidget):
         self.plot_view = GraphicsView()
         self.plot_layout = GraphicsLayout()                                                   
         self.plot_view.setCentralItem(self.plot_layout)
-        self.plot_widget = self.plot_layout.addPlot(0,0)
-        self.plot_widget.setDownsampling(1,True,'peak')
-        self.plot_widget.setClipToView(True)
+        self.plot_widgets = []
+        self.plot_widgets.append(self.plot_layout.addPlot(0,0))
+        self.plot_widgets[0].setDownsampling(1,True,'peak')
+        self.plot_widgets[0].setClipToView(True)
         self.plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
 
         layout.addWidget(self.plot_view)
@@ -264,7 +266,35 @@ class OsciPlotWidget(QWidget):
         if self.plotdata == None:
             return
         
-        self.plot_widget.enableAutoRange()
+        for p in self.plot_widgets:
+            p.enableAutoRange()
+        
+    def reset_data(self):
+        if self.plotdata == None:
+            return
+        
+        self.set_data(self.data)
+
+    def init_correct_plot_panes(self):
+        if self.data != None and self.chb_ind_plots.isChecked() and len(self.data) != len(self.plot_widgets):
+            for p in self.plot_widgets:
+                self.plot_layout.removeItem(p)
+            self.plot_widgets = []
+
+            for i in range(len(self.data)):
+                self.plot_widgets.append(self.plot_layout.addPlot(i,0))
+                self.plot_widgets[-1].setDownsampling(1,True,'peak')
+                self.plot_widgets[-1].setClipToView(True)
+                self.plot_widgets[-1].setXLink(self.plot_widgets[0])
+
+        elif (not self.chb_ind_plots.isChecked()) and (self.data == None or len(self.data) != 1):
+            for p in self.plot_widgets:
+                self.plot_layout.removeItem(p)
+            self.plot_widgets = []
+
+            self.plot_widgets.append(self.plot_layout.addPlot(0,0))
+            self.plot_widgets[-1].setDownsampling(1,True,'peak')
+            self.plot_widgets[-1].setClipToView(True)
 
     def normalized(self, ydata):
         if self.chb_norm.isChecked():
@@ -276,36 +306,45 @@ class OsciPlotWidget(QWidget):
         if self.plotdata == None:
             return
         
-        for ch_index, ch_data in enumerate(self.data):
-            xdata, ydata = ch_data
+        for plot_index, ch_data in enumerate(self.data):
+            xdata, ydata, ch_index = ch_data
             ydata = self.normalized(ydata)
-            self.plotdata[ch_index].setData(xdata, ydata)
+            self.plotdata[plot_index].setData(xdata, ydata)
             
-        if self.chb_norm.isChecked():
-            self.plot_widget.setLabel('left', "Normalized Voltage (U-U<sub>min</sub>)/(U<sub>max</sub>-U<sub>min</sub>)")
-        else:
-            self.plot_widget.setLabel('left', "Voltage U in V")
+        for p in self.plot_widgets:
+            if self.chb_norm.isChecked():
+                p.setLabel('left', "Normalized Voltage<br/>(U-U<sub>min</sub>)/(U<sub>max</sub>-U<sub>min</sub>)")
+            else:
+                p.setLabel('left', "Voltage U in V")
 
     def set_data(self, new_data):
         self.data = new_data
         self.plotdata = []
 
-        self.plot_widget.clear()
+        self.init_correct_plot_panes()
 
-        for ch_index, ch_data in enumerate(self.data):
-            xdata, ydata = ch_data
+        for p in self.plot_widgets:
+            p.clear()
+
+        for plot_index, ch_data in enumerate(self.data):
+            xdata, ydata, ch_index = ch_data
             ydata = self.normalized(ydata)
             pen = mkPen(self.default_colors[ch_index], width=2)
-            self.plotdata.append(self.plot_widget.plot(xdata, ydata, pen=pen))
+            
+            if self.chb_ind_plots.isChecked():
+                self.plotdata.append(self.plot_widgets[plot_index].plot(xdata, ydata, pen=pen))
+            else:
+                self.plotdata.append(self.plot_widgets[0].plot(xdata, ydata, pen=pen))
         
-        self.plot_widget.layout.setContentsMargins(0, 0, 0, 0)
-        self.plot_widget.showGrid(x = True, y = True, alpha = 0.3)
-        if self.chb_norm.isChecked():
-            self.plot_widget.setLabel('left', "Normalized Voltage U in V")
-        else:
-            self.plot_widget.setLabel('left', "Voltage U in V")
-        self.plot_widget.setLabel('bottom', "Time t in s")
-        self.plot_widget.autoRange()
+        for p in self.plot_widgets:
+            p.layout.setContentsMargins(0, 0, 0, 0)
+            p.showGrid(x = True, y = True, alpha = 0.3)
+            if self.chb_norm.isChecked():
+                p.setLabel('left', "Normalized Voltage<br/>(U-U<sub>min</sub>)/(U<sub>max</sub>-U<sub>min</sub>)")
+            else:
+                p.setLabel('left', "Voltage U in V")
+            p.setLabel('bottom', "Time t in s")
+            p.autoRange()
 
 class OsciSnapshot(QMainWindow):
     def __init__(self):
@@ -538,13 +577,11 @@ class OsciSnapshot(QMainWindow):
             new_data = []
             xdata = df["time in s"]
 
-            self.review_plot_widget.clear()
-
             for ch in range(4):
                 column_name = "channel {} in V".format(ch + 1)
                 if column_name in df.columns:
                     ydata = df[column_name]
-                    new_data.append((xdata, ydata))
+                    new_data.append((xdata, ydata, ch))
 
             self.review_plot_widget.set_data(new_data)
 
@@ -582,7 +619,7 @@ class OsciSnapshot(QMainWindow):
             new_data = []
             for ch in result.keys():
                 xdata, ydata, settings, raw_data = result[ch]
-                new_data.append((xdata, ydata))
+                new_data.append((xdata, ydata, ch))
 
             self.acquisition_plot_widget.set_data(new_data)
 
