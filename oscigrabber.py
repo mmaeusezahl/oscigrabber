@@ -23,6 +23,7 @@
 # SOFTWARE.
 #
 
+from asyncio.proactor_events import _ProactorBaseWritePipeTransport
 import sys
 import numpy as np
 import pandas as pd
@@ -104,7 +105,7 @@ class Oscilloscope:
     def connect(self, resource_string):
         self.safe_close()
         self.instr = self.rm.open_resource(resource_string)
-        self.instr.timeout = 1000
+        self.instr.timeout = 3000
         self.instr.write("*CLS")
         self.read_num_channels()
 
@@ -207,6 +208,104 @@ class Oscilloscope:
         ydata = settings['yincrement'] * (raw_data - settings['yreference']) + settings['yorigin']
 
         return xdata, ydata, settings, raw_data
+
+class OsciPlotWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        
+        self.default_colors = [
+            mkColor(242, 201, 19),
+            mkColor(30, 242, 19),
+            mkColor(45, 19, 242),
+            mkColor(242, 19, 164)
+        ]
+
+        self.data = None
+        self.plotdata = None
+        self.init_gui()
+    
+    def init_gui(self):
+        layout = QVBoxLayout(self)
+
+        top_box = QGroupBox("Plotting Settings", self)
+        layout.addWidget(top_box)
+        
+        top_layout = QHBoxLayout(top_box)
+        
+        self.btn_reset = QPushButton("Reset View", self)
+        self.btn_reset.clicked.connect(self.reset_view)
+        top_layout.addWidget(self.btn_reset)
+        top_layout.addSpacing(10)
+
+        self.chb_norm = QCheckBox("Normalize Data", self)
+        self.chb_norm.setChecked(False)
+        self.chb_norm.stateChanged.connect(self.reload_data)
+        top_layout.addWidget(self.chb_norm)
+        top_layout.addSpacing(10)
+        
+        self.chb_ind_plots = QCheckBox("Individual Plots", self)
+        self.chb_ind_plots.setChecked(False)
+        self.chb_ind_plots.stateChanged.connect(self.reload_data)
+        top_layout.addWidget(self.chb_ind_plots)
+
+        top_layout.addStretch()
+
+        self.plot_view = GraphicsView()
+        self.plot_layout = GraphicsLayout()                                                   
+        self.plot_view.setCentralItem(self.plot_layout)
+        self.plot_widget = self.plot_layout.addPlot(0,0)
+        self.plot_widget.setDownsampling(1,True,'peak')
+        self.plot_widget.setClipToView(True)
+        self.plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+
+        layout.addWidget(self.plot_view)
+
+    def reset_view(self):
+        if self.plotdata == None:
+            return
+        
+        self.plot_widget.enableAutoRange()
+
+    def normalized(self, ydata):
+        if self.chb_norm.isChecked():
+            ydata = ydata - min(ydata)
+            ydata = ydata / max(ydata)
+        return ydata
+
+    def reload_data(self):
+        if self.plotdata == None:
+            return
+        
+        for ch_index, ch_data in enumerate(self.data):
+            xdata, ydata = ch_data
+            ydata = self.normalized(ydata)
+            self.plotdata[ch_index].setData(xdata, ydata)
+            
+        if self.chb_norm.isChecked():
+            self.plot_widget.setLabel('left', "Normalized Voltage (U-U<sub>min</sub>)/(U<sub>max</sub>-U<sub>min</sub>)")
+        else:
+            self.plot_widget.setLabel('left', "Voltage U in V")
+
+    def set_data(self, new_data):
+        self.data = new_data
+        self.plotdata = []
+
+        self.plot_widget.clear()
+
+        for ch_index, ch_data in enumerate(self.data):
+            xdata, ydata = ch_data
+            ydata = self.normalized(ydata)
+            pen = mkPen(self.default_colors[ch_index], width=2)
+            self.plotdata.append(self.plot_widget.plot(xdata, ydata, pen=pen))
+        
+        self.plot_widget.layout.setContentsMargins(0, 0, 0, 0)
+        self.plot_widget.showGrid(x = True, y = True, alpha = 0.3)
+        if self.chb_norm.isChecked():
+            self.plot_widget.setLabel('left', "Normalized Voltage U in V")
+        else:
+            self.plot_widget.setLabel('left', "Voltage U in V")
+        self.plot_widget.setLabel('bottom', "Time t in s")
+        self.plot_widget.autoRange()
 
 class OsciSnapshot(QMainWindow):
     def __init__(self):
@@ -318,14 +417,9 @@ class OsciSnapshot(QMainWindow):
 
         self.left_widget_layout.addStretch()
         
-        self.acquisition_plot_view = GraphicsView()
-        self.acquisition_plot_layout = GraphicsLayout()                                                   
-        self.acquisition_plot_view.setCentralItem(self.acquisition_plot_layout)
-        self.acquisition_plot_widget = self.acquisition_plot_layout.addPlot(0,0)
-        self.acquisition_plot_widget.setDownsampling(1,True,'peak')
-        self.acquisition_plot_widget.setClipToView(True)
-        self.acquisition_plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.acquisition_tab_layout.addWidget(self.acquisition_plot_view, stretch=1)
+        self.acquisition_plot_widget = OsciPlotWidget()
+        self.acquisition_plot_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.acquisition_tab_layout.addWidget(self.acquisition_plot_widget, stretch=1)
 
         self.review_tab = QWidget()
         self.review_tab_layout = QHBoxLayout()
@@ -355,14 +449,9 @@ class OsciSnapshot(QMainWindow):
         
         self.review_left_widget_layout.addStretch()
 
-        self.review_plot_view = GraphicsView()
-        self.review_plot_layout = GraphicsLayout()                                                   
-        self.review_plot_view.setCentralItem(self.review_plot_layout)
-        self.review_plot_widget = self.review_plot_layout.addPlot(0,0)
-        self.review_plot_widget.setDownsampling(1, True, 'peak')
-        self.review_plot_widget.setClipToView(True)
-        self.review_plot_view.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
-        self.review_tab_layout.addWidget(self.review_plot_view, stretch=1)
+        self.review_plot_widget = OsciPlotWidget()
+        self.review_plot_widget.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Expanding)
+        self.review_tab_layout.addWidget(self.review_plot_widget, stretch=1)
 
         self.setWindowTitle("Oscilloscope Snapshot")
 
@@ -446,6 +535,7 @@ class OsciSnapshot(QMainWindow):
         df = pd.read_csv(load_file, skiprows=first_empty_line)
         
         try:
+            new_data = []
             xdata = df["time in s"]
 
             self.review_plot_widget.clear()
@@ -454,14 +544,9 @@ class OsciSnapshot(QMainWindow):
                 column_name = "channel {} in V".format(ch + 1)
                 if column_name in df.columns:
                     ydata = df[column_name]
-                    pen = mkPen(self.default_colors[ch], width=2)
-                    self.review_plot_widget.plot(xdata, ydata, pen=pen)
-                
-            self.review_plot_widget.layout.setContentsMargins(0, 0, 0, 0)
-            self.review_plot_widget.showGrid(x = True, y = True, alpha = 0.3)   
-            self.review_plot_widget.setLabel('left', "Voltage U in V")
-            self.review_plot_widget.setLabel('bottom', "Time t in s")
-            self.review_plot_widget.autoRange()
+                    new_data.append((xdata, ydata))
+
+            self.review_plot_widget.set_data(new_data)
 
             self.txb_review_comment.setPlainText(header)
 
@@ -493,19 +578,13 @@ class OsciSnapshot(QMainWindow):
             result = self.osci.acquire(channels)
             self.last_result = result
             self.btn_save.setEnabled(True)
-
-            self.acquisition_plot_widget.clear()
-
+            
+            new_data = []
             for ch in result.keys():
                 xdata, ydata, settings, raw_data = result[ch]
-                pen = mkPen(self.default_colors[ch], width=2)
-                self.acquisition_plot_widget.plot(xdata, ydata, pen=pen)
-            
-            self.acquisition_plot_widget.layout.setContentsMargins(0, 0, 0, 0)
-            self.acquisition_plot_widget.showGrid(x = True, y = True, alpha = 0.3)   
-            self.acquisition_plot_widget.setLabel('left', "Voltage U in V")
-            self.acquisition_plot_widget.setLabel('bottom', "Time t in s")
-            self.acquisition_plot_widget.autoRange()
+                new_data.append((xdata, ydata))
+
+            self.acquisition_plot_widget.set_data(new_data)
 
         except FatalInternalOscilloscopeError as ex:
             self.update_buttons_after_connect_state_changed()
@@ -564,4 +643,4 @@ def main():
     sys.exit(app.exec())
 
 if __name__ == '__main__':
-    #main()
+    main()
