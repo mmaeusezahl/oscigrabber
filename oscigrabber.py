@@ -2,7 +2,7 @@
 #
 # MIT License
 #
-# Copyright (c) 2021 Max Mäusezahl
+# Copyright (c) 2021-2022 Max Mäusezahl
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -564,7 +564,4 @@ def main():
     sys.exit(app.exec())
 
 if __name__ == '__main__':
-    main()
-    #rm = ResourceManager("@py")
-    #print(rm.list_resources())
-    #instr = rm.open_resource("USB0::2391::6043::MY52104518::0::INSTR")
+    #main()
